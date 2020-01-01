@@ -9,7 +9,7 @@
 - [ ] 7. Read Operations A Closer Look
 - [ ] 8. Update Operations
 - [ ] 9. Understanding Delete Operations
-- [ ] 10. Working with Indexes
+- [x] 10. Working with Indexes
 - [ ] 11. Working with Geospatial Data
 - [ ] 12. Understanding the Aggregation Framework
 - [ ] 13. Working with Numeric Data

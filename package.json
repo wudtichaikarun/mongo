@@ -1,0 +1,14 @@
+{
+  "name": "10-working-with-indexes",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mongoimport": "^1.0.6"
+  }
+}
