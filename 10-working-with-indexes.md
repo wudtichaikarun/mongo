@@ -1261,6 +1261,6 @@ Find duplicate value `email: "abigail.clark@example.com"`
 
 ---
 
-## <a name="10">11. What difference between Partial index and Compound index</a>
+## <a name="11">11. What difference between Partial index and Compound index</a>
 
 The difference is that for the partial index, the overall index simply is smaller, from example above there really are only the ages of males stored in there, the female keys are not stored in the index and therefore, the index size is smaller leading to a lower impact on your hard drive and also your right queries are of course also sped up because if your insert a new female, that will never have to be added to your index.
