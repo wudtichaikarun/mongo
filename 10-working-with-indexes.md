@@ -61,6 +61,7 @@ Terminal-2
 Terminal-3
 
 ```
+> mongo
 > show dbs
 admin        0.000GB
 config       0.000GB
