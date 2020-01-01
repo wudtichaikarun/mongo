@@ -1,9 +1,16 @@
 # 10 WORKING WITH INDEXES
 
-- [ ] 1. Why indexes
+- [ ] [1. Why indexes](#1)
 - [ ] [2. Adding a Single Field Index](#2)
-- [ ] 3. Mongo command
-- [ ]
+- [ ] [3. Mongo command](#3)
+- [ ] [4. Tool to analyze](#4) 'COLLSCAN' collection scan vs 'IXSCAN' index scan
+- [ ] [5. Create Index](#5)
+- [ ] [6. Drop Index](#6)
+- [ ] [7. Creating Compound Index](#7)
+- [ ] [8. Using Indexes for sorting](#8)
+- [ ] [9. Configuring Indexes](#9)
+- [ ] [10. Partial Filters](#10)
+- [ ] [11. What difference between Partial index and Compound index](#11)
 
 ---
 
@@ -41,7 +48,9 @@ Terminal-2
 > mongoimport persons.json -d contactData -c contacts --jsonArray
 ```
 
-## 3. Mongo command
+---
+
+## <a name="3">3. Mongo command</a>
 
 > Mongo command (after 1,2) at Terminal-3 run command `mongo`
 
@@ -213,9 +222,11 @@ contacts
 >
 ```
 
-## 4. Tool to analyze
+---
 
-6.  Mongodb gives use a Tool to analyze how it executed the quey just add `explain()` keyword after document and ex `db.contacts.explain().find({"dob.age": {$gt: 60}})`
+## <a name="4">4. Tool to analyze</a>
+
+1. Mongodb gives use a Tool to analyze how it executed the quey just add `explain()` keyword after document and ex `db.contacts.explain().find({"dob.age": {$gt: 60}})`
 
 ```JSON
 > db.contacts.explain().find({"dob.age": {$gt: 60}})
@@ -251,7 +262,7 @@ contacts
 >
 ```
 
-7 Tool to analyze. arguments `.explain("executionStates").`
+2. <a name="executionStates">Tool to analyze. arguments `.explain("executionStates").`</a>
 
 ```JSON
 > db.contacts.explain("executionStats").find({"dob.age": {$gt: 60}})
@@ -313,3 +324,943 @@ contacts
 }
 >
 ```
+
+---
+
+## <a name="5">5. Create Index</a>
+
+- assigning `db.contacts.createIndex({"dob.age": 1})` add 1 lower order come first higher values towards the end.
+- descending `db.contacts.createIndex({"dob.age": - 1})` add -1
+
+Assigning index
+
+```
+> db.contacts.createIndex({"dob.age": 1})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+>
+```
+
+<br/>
+
+> Test query speed agin after created index for 'dob.age'
+
+Before create Index
+
+from [executionStates](#executionStates) query `db.contacts.explain("executionStats").find({"dob.age": {$gt: 60}})` return
+
+- executionTimeMillis = 4,
+- executionStages.works = 5000 all of the documents
+
+After create Index
+
+return
+
+- executionTimeMillis = 4,
+- executionStages.works = 1223 only index
+- inputStage.stage = "IXSCAN",
+
+```JSON
+> db.contacts.explain("executionStats").find({"dob.age": {$gt: 60}})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "contactData.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"dob.age" : {
+				"$gt" : 60
+			}
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"dob.age" : 1
+				},
+				"indexName" : "dob.age_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"dob.age" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"dob.age" : [
+						"(60.0, inf.0]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 1222,
+		"executionTimeMillis" : 3,
+		"totalKeysExamined" : 1222,
+		"totalDocsExamined" : 1222,
+		"executionStages" : {
+			"stage" : "FETCH",
+			"nReturned" : 1222,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 1223,
+			"advanced" : 1222,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 9,
+			"restoreState" : 9,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"docsExamined" : 1222,
+			"alreadyHasObj" : 0,
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 1222,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 1223,
+				"advanced" : 1222,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 9,
+				"restoreState" : 9,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"keyPattern" : {
+					"dob.age" : 1
+				},
+				"indexName" : "dob.age_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"dob.age" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"dob.age" : [
+						"(60.0, inf.0]"
+					]
+				},
+				"keysExamined" : 1222,
+				"seeks" : 1,
+				"dupsTested" : 0,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0
+			}
+		}
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MBP",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+```
+
+---
+
+## <a name="6">6. Drop Index</a>
+
+Note: If you have a dataset where your queries typically only return fractions, link 10% or 20% or lower of the documents, then indexes will almost certainly always speed it up.
+
+```
+> db.contacts.dropIndex({"dob.age": 1})
+{ "nIndexesWas" : 2, "ok" : 1 }
+>
+```
+
+> Full collection scan vs Indexes scan
+
+If query return a lot of result (more than 20%) Index will return slower because it's have extra step to go through.
+
+with Index (Indexes scan)
+
+```JSON
+> db.contacts.explain("executionStats").find({"dob.age": {$gt: 20}})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "contactData.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"dob.age" : {
+				"$gt" : 20
+			}
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"dob.age" : 1
+				},
+				"indexName" : "dob.age_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"dob.age" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"dob.age" : [
+						"(20.0, inf.0]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 5000,
+		"executionTimeMillis" : 11,
+		"totalKeysExamined" : 5000,
+		"totalDocsExamined" : 5000,
+		"executionStages" : {
+			"stage" : "FETCH",
+			"nReturned" : 5000,
+			"executionTimeMillisEstimate" : 11,
+			"works" : 5001,
+			"advanced" : 5000,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 39,
+			"restoreState" : 39,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"docsExamined" : 5000,
+			"alreadyHasObj" : 0,
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 5000,
+				"executionTimeMillisEstimate" : 11,
+				"works" : 5001,
+				"advanced" : 5000,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 39,
+				"restoreState" : 39,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"keyPattern" : {
+					"dob.age" : 1
+				},
+				"indexName" : "dob.age_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"dob.age" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"dob.age" : [
+						"(20.0, inf.0]"
+					]
+				},
+				"keysExamined" : 5000,
+				"seeks" : 1,
+				"dupsTested" : 0,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0
+			}
+		}
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MBP",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+with out Index (Full collection scan)
+
+```JSON
+> db.contacts.explain("executionStats").find({"dob.age": {$gt: 20}})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "contactData.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"dob.age" : {
+				"$gt" : 20
+			}
+		},
+		"winningPlan" : {
+			"stage" : "COLLSCAN",
+			"filter" : {
+				"dob.age" : {
+					"$gt" : 20
+				}
+			},
+			"direction" : "forward"
+		},
+		"rejectedPlans" : [ ]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 5000,
+		"executionTimeMillis" : 9,
+		"totalKeysExamined" : 0,
+		"totalDocsExamined" : 5000,
+		"executionStages" : {
+			"stage" : "COLLSCAN",
+			"filter" : {
+				"dob.age" : {
+					"$gt" : 20
+				}
+			},
+			"nReturned" : 5000,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 5002,
+			"advanced" : 5000,
+			"needTime" : 1,
+			"needYield" : 0,
+			"saveState" : 39,
+			"restoreState" : 39,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"direction" : "forward",
+			"docsExamined" : 5000
+		}
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MBP",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+```
+
+---
+
+## <a name="7">7. Creating Compound Index</a>
+
+![mongoose-compund-indexes](./images/10-working-with-indexes/mongoose-compund-indexes.png)
+
+Note: IXSCAN = index scan, COLLSCAN = collection scan
+
+before start clear old Index
+
+clear "dob.age" Index
+
+```
+> db.contacts.dropIndex({"dob.age": 1})
+{ "nIndexesWas" : 3, "ok" : 1 }
+```
+
+<br/>
+
+clear gender Index
+
+```
+> db.contacts.dropIndex({gender: 1})
+{ "nIndexesWas" : 2, "ok" : 1 }
+```
+
+<br/>
+
+create compound Indexes 'dob.age' and 'gender', we got 2 fields and this will essentially store one Index where each entry in the index in is now not on a single value but two combined values. <b>`So it does not create 2 indexes`</b>
+
+<br/>
+
+create compound Indexes
+
+```
+> db.contacts.createIndex({"dob.age":1, gender:1})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+>
+```
+
+<br/>
+
+compound query
+
+use index `"indexName" : "dob.age_1_gender_1"`
+
+```JSON
+> db.contacts.explain().find({"dob.age": 35, gender: "male"})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "contactData.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"$and" : [
+				{
+					"dob.age" : {
+						"$eq" : 35
+					}
+				},
+				{
+					"gender" : {
+						"$eq" : "male"
+					}
+				}
+			]
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"dob.age" : 1,
+					"gender" : 1
+				},
+				"indexName" : "dob.age_1_gender_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"dob.age" : [ ],
+					"gender" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"dob.age" : [
+						"[35.0, 35.0]"
+					],
+					"gender" : [
+						"[\"male\", \"male\"]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MBP",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+<br/>
+
+query just only left `"dob.age": 35` still use index scan `IXSCAN` `"indexName" : "dob.age_1_gender_1"`
+
+Note: compound indexes can use from left to right
+
+```JSON
+> db.contacts.explain().find({"dob.age": 35})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "contactData.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"dob.age" : {
+				"$eq" : 35
+			}
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"dob.age" : 1,
+					"gender" : 1
+				},
+				"indexName" : "dob.age_1_gender_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"dob.age" : [ ],
+					"gender" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"dob.age" : [
+						"[35.0, 35.0]"
+					],
+					"gender" : [
+						"[MinKey, MaxKey]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MBP",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+<br/>
+
+query just only right `gender: "male"` it will use collection scan `COLLSCAN`
+
+```JSON
+> db.contacts.explain().find({gender: "male"})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "contactData.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"gender" : {
+				"$eq" : "male"
+			}
+		},
+		"winningPlan" : {
+			"stage" : "COLLSCAN",
+			"filter" : {
+				"gender" : {
+					"$eq" : "male"
+				}
+			},
+			"direction" : "forward"
+		},
+		"rejectedPlans" : [ ]
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MBP",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+---
+
+## <a name="8">8. Using Indexes for sorting]</a>
+
+Note: mongodb has a threshold of 32 megabytes in memory for sorting and if you have no index, mongodb will essentially fetch all your documents into memory and do the sort there.
+
+```JSON
+> db.contacts.explain().find({"dob.age": 35}).sort({gender: 1})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "contactData.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"dob.age" : {
+				"$eq" : 35
+			}
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"dob.age" : 1,
+					"gender" : 1
+				},
+				"indexName" : "dob.age_1_gender_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"dob.age" : [ ],
+					"gender" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"dob.age" : [
+						"[35.0, 35.0]"
+					],
+					"gender" : [
+						"[MinKey, MaxKey]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MBP",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+```
+
+---
+
+## <a name="9">9. Configuring Indexes</a>
+
+create `Index` and `unique` value
+
+Error duplicate
+
+```
+> db.contacts.createIndex({email:1}, {unique: true})
+{
+	"ok" : 0,
+	"errmsg" : "E11000 duplicate key error collection: contactData.contacts index: email_1 dup key: { : \"abigail.clark@example.com\" }",
+	"code" : 11000,
+	"codeName" : "DuplicateKey"
+}
+>
+```
+
+<br/>
+
+Find duplicate value `email: "abigail.clark@example.com"`
+
+```JSON
+> db.contacts.find({email: 'abigail.clark@example.com'}).pretty()
+{
+	"_id" : ObjectId("5e0c6b63b9525e53802eaee6"),
+	"gender" : "female",
+	"name" : {
+		"title" : "miss",
+		"first" : "abigail",
+		"last" : "clark"
+	},
+	"location" : {
+		"street" : "9677 st. lawrence ave",
+		"city" : "aylmer",
+		"state" : "québec",
+		"postcode" : "F6J 8U1",
+		"coordinates" : {
+			"latitude" : "-61.8849",
+			"longitude" : "-84.5766"
+		},
+		"timezone" : {
+			"offset" : "+9:30",
+			"description" : "Adelaide, Darwin"
+		}
+	},
+	"email" : "abigail.clark@example.com",
+	"login" : {
+		"uuid" : "a716f860-ba7b-4cb4-890d-2f05ba8f1130",
+		"username" : "whitefish879",
+		"password" : "1955",
+		"salt" : "LnZqDwt4",
+		"md5" : "2bfe0c8e7a9ba85f6621a4964fc7776c",
+		"sha1" : "fec92eeaaab5913f075d839db986cfa8f095ca82",
+		"sha256" : "099e44d8b9f7902df90f22f3914d5d4641296ff7ab364bcf1d64e346cfd9cd23"
+	},
+	"dob" : {
+		"date" : "1968-01-18T05:26:30Z",
+		"age" : 50
+	},
+	"registered" : {
+		"date" : "2014-09-22T01:38:30Z",
+		"age" : 3
+	},
+	"phone" : "438-193-7599",
+	"cell" : "184-658-2267",
+	"id" : {
+		"name" : "",
+		"value" : null
+	},
+	"picture" : {
+		"large" : "https://randomuser.me/api/portraits/women/93.jpg",
+		"medium" : "https://randomuser.me/api/portraits/med/women/93.jpg",
+		"thumbnail" : "https://randomuser.me/api/portraits/thumb/women/93.jpg"
+	},
+	"nat" : "CA"
+}
+{
+	"_id" : ObjectId("5e0c6b63b9525e53802eb531"),
+	"gender" : "female",
+	"name" : {
+		"title" : "mrs",
+		"first" : "abigail",
+		"last" : "clark"
+	},
+	"location" : {
+		"street" : "8067 argyle st",
+		"city" : "grand falls",
+		"state" : "prince edward island",
+		"postcode" : "K0M 1H7",
+		"coordinates" : {
+			"latitude" : "42.2225",
+			"longitude" : "45.5194"
+		},
+		"timezone" : {
+			"offset" : "-5:00",
+			"description" : "Eastern Time (US & Canada), Bogota, Lima"
+		}
+	},
+	"email" : "abigail.clark@example.com",
+	"login" : {
+		"uuid" : "08ee8142-1126-4e94-9587-13ea17d8e8da",
+		"username" : "greenzebra872",
+		"password" : "doudou",
+		"salt" : "eHejWeiE",
+		"md5" : "fd466a6c5417bce67d14966c4a5b87d8",
+		"sha1" : "22e48f2072a8365eea0a15331430f0522bfd6cb7",
+		"sha256" : "fb1bad920e555342d414c3ef3ce15dac487d174ec8983781667070065a10f1ef"
+	},
+	"dob" : {
+		"date" : "1948-12-08T01:09:03Z",
+		"age" : 69
+	},
+	"registered" : {
+		"date" : "2014-05-22T14:42:50Z",
+		"age" : 4
+	},
+	"phone" : "522-306-4813",
+	"cell" : "910-566-1400",
+	"id" : {
+		"name" : "",
+		"value" : null
+	},
+	"picture" : {
+		"large" : "https://randomuser.me/api/portraits/women/21.jpg",
+		"medium" : "https://randomuser.me/api/portraits/med/women/21.jpg",
+		"thumbnail" : "https://randomuser.me/api/portraits/thumb/women/21.jpg"
+	},
+	"nat" : "CA"
+}
+>
+```
+
+---
+
+## <a name="10">10. Partial Filters</a>
+
+1. get Indexes
+
+```
+> db.contacts.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "contactData.contacts"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"dob.age" : 1,
+			"gender" : 1
+		},
+		"name" : "dob.age_1_gender_1",
+		"ns" : "contactData.contacts"
+	}
+]
+```
+
+<br/>
+2. drop index "name" : "dob.age_1_gender_1",
+
+```
+> db.contacts.dropIndex({"dob.age": 1, gender: 1})
+{ "nIndexesWas" : 3, "ok" : 1 }
+```
+
+3. get Indexes
+
+```
+> db.contacts.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "contactData.contacts"
+	}
+]
+```
+
+<br/>
+4.create partial Index different field
+
+```
+> db.contacts.createIndex({"dob.age": 1}, {partialFilterExpression: {gender: "male"}})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 2,
+	"numIndexesAfter" : 3,
+	"ok" : 1
+}
+```
+
+<br/>
+5. get Index
+
+```
+> db.contacts.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "contactData.contacts"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"dob.age" : 1
+		},
+		"name" : "dob.age_1",
+		"ns" : "contactData.contacts",
+		"partialFilterExpression" : {
+			"gender" : "male"
+		}
+	}
+]
+```
+
+<br/>
+
+5. test explain find only 'dob.age' result will use <b>`collection scan COLLSCAN`</b>
+
+```JSON
+> db.contacts.explain().find({"dob.age": {$gt: 60}})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "contactData.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"dob.age" : {
+				"$gt" : 60
+			}
+		},
+		"winningPlan" : {
+			"stage" : "COLLSCAN",
+			"filter" : {
+				"dob.age" : {
+					"$gt" : 60
+				}
+			},
+			"direction" : "forward"
+		},
+		"rejectedPlans" : [ ]
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MBP",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+```
+
+<br/>
+
+6. partial search meaning. test find with `dob.age` and `gender: "male"` result will use <b>`index search IXSCAN`</b>
+
+```JSON
+> db.contacts.explain().find({"dob.age": {$gt: 60}, gender: "male"})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "contactData.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"$and" : [
+				{
+					"gender" : {
+						"$eq" : "male"
+					}
+				},
+				{
+					"dob.age" : {
+						"$gt" : 60
+					}
+				}
+			]
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"filter" : {
+				"gender" : {
+					"$eq" : "male"
+				}
+			},
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"dob.age" : 1
+				},
+				"indexName" : "dob.age_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"dob.age" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : true,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"dob.age" : [
+						"(60.0, inf.0]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MBP",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+```
+
+---
+
+## <a name="10">11. What difference between Partial index and Compound index</a>
+
+The difference is that for the partial index, the overall index simply is smaller, from example above there really are only the ages of males stored in there, the female keys are not stored in the index and therefore, the index size is smaller leading to a lower impact on your hard drive and also your right queries are of course also sped up because if your insert a new female, that will never have to be added to your index.
