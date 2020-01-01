@@ -1,16 +1,18 @@
 # 10 WORKING WITH INDEXES
 
-- [ ] [1. Why indexes](#1)
-- [ ] [2. Adding a Single Field Index](#2)
-- [ ] [3. Mongo command](#3)
-- [ ] [4. Tool to analyze](#4) 'COLLSCAN' collection scan vs 'IXSCAN' index scan
-- [ ] [5. Create Index](#5)
-- [ ] [6. Drop Index](#6)
-- [ ] [7. Creating Compound Index](#7)
-- [ ] [8. Using Indexes for sorting](#8)
-- [ ] [9. Configuring Indexes](#9)
-- [ ] [10. Partial Filters](#10)
-- [ ] [11. What difference between Partial index and Compound index](#11)
+- [x] [1. Why indexes](#1)
+- [x] [2. Adding a Single Field Index](#2)
+- [x] [3. Mongo command](#3)
+- [x] [4. Tool to analyze](#4) 'COLLSCAN' collection scan vs 'IXSCAN' index scan
+- [x] [5. Create Index](#5)
+- [x] [6. Drop Index](#6)
+- [x] [7. Creating Compound Index](#7)
+- [x] [8. Using Indexes for sorting](#8)
+- [x] [9. Configuring Indexes](#9)
+- [x] [10. Partial Filters](#10)
+- [x] [11. What difference between Partial index and Compound index](#11)
+- [x] [12. Combination of unique and partial filter expression](#12)
+- [ ] [13. Time-To-Live (TTL) index](#13)
 
 ---
 
@@ -1264,3 +1266,82 @@ Find duplicate value `email: "abigail.clark@example.com"`
 ## <a name="11">11. What difference between Partial index and Compound index</a>
 
 The difference is that for the partial index, the overall index simply is smaller, from example above there really are only the ages of males stored in there, the female keys are not stored in the index and therefore, the index size is smaller leading to a lower impact on your hard drive and also your right queries are of course also sped up because if your insert a new female, that will never have to be added to your index.
+
+---
+
+## <a name="12">12. Combination of unique and partial filter expression </a>
+
+1. insert many data to document name `users`
+
+```
+> db.users.insertMany([{name: 'Max', email: 'max@test.com'}, {name: 'Menu'}])
+{
+	"acknowledged" : true,
+	"insertedIds" : [
+		ObjectId("5e0cbb2c8a8b15d665e315f5"),
+		ObjectId("5e0cbb2c8a8b15d665e315f6")
+	]
+}
+>
+```
+
+2. create Index with and unique value
+
+```
+> db.users.createIndex({email: 1}, {unique: true})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+>
+```
+
+3. try to insert duplicate email value
+
+```
+> db.users.insertOne({email: 'max@test.com'})
+2020-01-01T22:35:32.415+0700 E QUERY    [js] WriteError: E11000 duplicate key error collection: contactData.users index: email_1 dup key: { : "max@test.com" } :
+WriteError({
+	"index" : 0,
+	"code" : 11000,
+	"errmsg" : "E11000 duplicate key error collection: contactData.users index: email_1 dup key: { : \"max@test.com\" }",
+	"op" : {
+		"_id" : ObjectId("5e0cbc448a8b15d665e315f7"),
+		"email" : "max@test.com"
+	}
+})
+WriteError@src/mongo/shell/bulk_api.js:461:48
+Bulk/mergeBatchResults@src/mongo/shell/bulk_api.js:841:49
+Bulk/executeBatch@src/mongo/shell/bulk_api.js:906:13
+Bulk/this.execute@src/mongo/shell/bulk_api.js:1150:21
+DBCollection.prototype.insertOne@src/mongo/shell/crud_api.js:252:9
+@(shell):1:1
+>
+```
+
+4. dropIndex email
+
+```
+> db.users.dropIndex({email: 1})
+{ "nIndexesWas" : 2, "ok" : 1 }
+```
+
+5. create (`Combination of unique and partial filter expression`)
+   - index email
+   - unique value
+   - partialFilterExpression
+
+> Meaning: Add elements email into index where the email filed exists
+
+```
+> db.users.createIndex({email: 1}, {unique: true, partialFilterExpression: {email: {$exists: true}}})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+>
+```
