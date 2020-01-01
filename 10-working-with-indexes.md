@@ -267,6 +267,8 @@ contacts
 
 2. <a name="executionStates">Tool to analyze. arguments `.explain("executionStates").`</a>
 
+> Note: Robo 3T use command link this `db.getCollection('contacts').find({"dob.age": {$gt: 60}}).explain("executionStats")`
+
 ```JSON
 > db.contacts.explain("executionStats").find({"dob.age": {$gt: 60}})
 {
