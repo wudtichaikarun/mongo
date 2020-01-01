@@ -1,0 +1,21 @@
+# MongoDb [udemy-course](https://www.udemy.com/course/mongodb-the-complete-developers-guide/learn/lecture/13914002#overview)
+
+- [ ] 1. Introduction
+- [ ] 2. Understanding the Basic & CRUD Operations
+- [ ] 3. Schemas & Relations: How to Structure Documents
+- [ ] 4. Exploring The Shell & The Server
+- [ ] 5. Using the MongoDb Compass to Explore Data Visually
+- [ ] 6. Diving Into Create Operations
+- [ ] 7. Read Operations A Closer Look
+- [ ] 8. Update Operations
+- [ ] 9. Understanding Delete Operations
+- [ ] 10. Working with Indexes
+- [ ] 11. Working with Geospatial Data
+- [ ] 12. Understanding the Aggregation Framework
+- [ ] 13. Working with Numeric Data
+- [ ] 14. MongoDb & Security
+- [ ] 15. Performance, Fault Tolerancy & Deployment
+- [ ] 16. Transactions
+- [ ] 17. From Shell to Driver
+- [ ] 18. Introducing Stitch
+- [ ] 19. Roundup
