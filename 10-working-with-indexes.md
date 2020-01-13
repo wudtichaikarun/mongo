@@ -13,6 +13,8 @@
 - [x] [11. What difference between Partial index and Compound index](#11)
 - [x] [12. Combination of unique and partial filter expression](#12)
 - [x] [13. Time-To-Live (TTL) index](#13)
+- [x] [14. Query diagnosis & query planning](#14)
+- [x] [15. Using multi-key indexes](#15)
 
 ---
 
@@ -1396,6 +1398,1225 @@ insert new test-02 element and then wait 10 seconds data will be delete.
 {
 	"acknowledged" : true,
 	"insertedId" : ObjectId("5e1bd75c0265664cfe303585")
+}
+>
+```
+
+## <a name="14">14. Query Diagnosis & Query Planing</a>
+
+Query diagnosis & Query Planing
+![Query_Diagnosis_&_Query_Planing](./images/10-working-with-indexes/Query_Diagnosis_&_Query_Planing.png)
+
+Efficient Queries & Covered Queries
+![Query_Diagnosis_&_Query_Planing](./images/10-working-with-indexes/Efficient_Queries_&_Covered_Queries.png)
+
+---
+
+Understanding Covered Queries
+
+create data test-01
+
+```Javascript
+> db.customers.insertMany([{name: 'Max', age: 29, salary: 3000}, {name: 'Menu', age: 30, salary: 4000}])
+{
+	"acknowledged" : true,
+	"insertedIds" : [
+		ObjectId("5e1bdf560265664cfe303587"),
+		ObjectId("5e1bdf560265664cfe303588")
+	]
+}
+>
+```
+
+add index to data test-01
+
+```Javascript
+> db.customers.createIndex({name: 1})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+>
+```
+
+find and explain
+
+>     "totalDocsExamined" : 1,
+
+```Javascript
+> db.customers.explain("executionStats").find({name: "Max"})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "test.customers",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"name" : {
+				"$eq" : "Max"
+			}
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"name" : 1
+				},
+				"indexName" : "name_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"name" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"name" : [
+						"[\"Max\", \"Max\"]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 1,
+		"executionTimeMillis" : 5,
+		"totalKeysExamined" : 1,
+		"totalDocsExamined" : 1,
+		"executionStages" : {
+			"stage" : "FETCH",
+			"nReturned" : 1,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 2,
+			"advanced" : 1,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"docsExamined" : 1,
+			"alreadyHasObj" : 0,
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 1,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 2,
+				"advanced" : 1,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 0,
+				"restoreState" : 0,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"keyPattern" : {
+					"name" : 1
+				},
+				"indexName" : "name_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"name" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"name" : [
+						"[\"Max\", \"Max\"]"
+					]
+				},
+				"keysExamined" : 1,
+				"seeks" : 1,
+				"dupsTested" : 0,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0
+			}
+		}
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MacBook-Pro.local",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+find don't return \_id return just name
+
+>     "totalDocsExamined" : 0,
+
+```Javascript
+> db.customers.explain("executionStats").find({name: "Max"}, {_id: 0, name: 1})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "test.customers",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"name" : {
+				"$eq" : "Max"
+			}
+		},
+		"winningPlan" : {
+			"stage" : "PROJECTION",
+			"transformBy" : {
+				"_id" : 0,
+				"name" : 1
+			},
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"name" : 1
+				},
+				"indexName" : "name_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"name" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"name" : [
+						"[\"Max\", \"Max\"]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 1,
+		"executionTimeMillis" : 2,
+		"totalKeysExamined" : 1,
+		"totalDocsExamined" : 0,
+		"executionStages" : {
+			"stage" : "PROJECTION",
+			"nReturned" : 1,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 2,
+			"advanced" : 1,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"transformBy" : {
+				"_id" : 0,
+				"name" : 1
+			},
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 1,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 2,
+				"advanced" : 1,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 0,
+				"restoreState" : 0,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"keyPattern" : {
+					"name" : 1
+				},
+				"indexName" : "name_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"name" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"name" : [
+						"[\"Max\", \"Max\"]"
+					]
+				},
+				"keysExamined" : 1,
+				"seeks" : 1,
+				"dupsTested" : 0,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0
+			}
+		}
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MacBook-Pro.local",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+How mongodb reject a plan
+
+```
+> db.customers.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "test.customers"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"name" : 1
+		},
+		"name" : "name_1",
+		"ns" : "test.customers"
+	}
+]
+>
+```
+
+create compound indexes
+
+> Note: That the order here is important for compound indexes and if I would have put name first, this index here wouldn't make much sense because then I would have a single field index or name even though the name is the first field in a compound index and you learned from left to right, a compound index can be used well standalone, so each field can be used standalone from left to right.
+
+> So in this case, if age comes first, we can also filter just for age and take advantage of this index, for name we can take advantage of this index because name is only the second value is mapped to the respective ages and only sorted within the age category, so if you filter for jus name and you didn't have that index, name could not be supported by index.
+
+```
+> db.customers.createIndex({age: 1, name: 1})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 2,
+	"numIndexesAfter" : 3,
+	"ok" : 1
+}
+>
+```
+
+get indexes to see compound index
+
+```
+> db.customers.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "test.customers"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"name" : 1
+		},
+		"name" : "name_1",
+		"ns" : "test.customers"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"age" : 1,
+			"name" : 1
+		},
+		"name" : "age_1_name_1",
+		"ns" : "test.customers"
+	}
+]
+>
+```
+
+### winningPlan vs rejectedPlans
+
+search test compound index
+
+> winningPlan vs rejectedPlans, how does mongodb figure out which plan is better?
+
+mongodb uses an approach where it simply
+
+first of all looks for indexes that could help you with the query at hand, so in our last lecture and example, we had the name single field index and age and name as a compound index. Since our query, our find method included a look for name, mongodb automatically derived that both the name single field index and the age name compound index could be helpful. So it came up with tow approaches, for other scenarios you might of course have more approaches,
+
+Winning plans
+![Query_Diagnosis_&_Query_Planing](./images/10-working-with-indexes/Winning_plans.png)
+
+```Javascript
+// the order in which you specify you arguments when writing the query does not matter, our compound index was created with age as the first value and name as a second. mongodb does reverse it for us.
+> db.customers.explain().find({name: "Max", age: 30})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "test.customers",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"$and" : [
+				{
+					"age" : {
+						"$eq" : 30
+					}
+				},
+				{
+					"name" : {
+						"$eq" : "Max"
+					}
+				}
+			]
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"age" : 1,
+					"name" : 1
+				},
+				"indexName" : "age_1_name_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"age" : [ ],
+					"name" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"age" : [
+						"[30.0, 30.0]"
+					],
+					"name" : [
+						"[\"Max\", \"Max\"]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [
+			{
+				"stage" : "FETCH",
+				"filter" : {
+					"age" : {
+						"$eq" : 30
+					}
+				},
+				"inputStage" : {
+					"stage" : "IXSCAN",
+					"keyPattern" : {
+						"name" : 1
+					},
+					"indexName" : "name_1",
+					"isMultiKey" : false,
+					"multiKeyPaths" : {
+						"name" : [ ]
+					},
+					"isUnique" : false,
+					"isSparse" : false,
+					"isPartial" : false,
+					"indexVersion" : 2,
+					"direction" : "forward",
+					"indexBounds" : {
+						"name" : [
+							"[\"Max\", \"Max\"]"
+						]
+					}
+				}
+			}
+		]
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MacBook-Pro.local",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+### Clearing the winning plan for cache
+
+Winning plans
+![Query_Diagnosis_&_Query_Planing](./images/10-working-with-indexes/Clearing_the_winning_plan_for_cache.png)
+
+### allPlansExecution
+
+```Javascript
+> db.customers.explain("allPlansExecution").find({name: "Max", age: 30})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "test.customers",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"$and" : [
+				{
+					"age" : {
+						"$eq" : 30
+					}
+				},
+				{
+					"name" : {
+						"$eq" : "Max"
+					}
+				}
+			]
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"age" : 1,
+					"name" : 1
+				},
+				"indexName" : "age_1_name_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"age" : [ ],
+					"name" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"age" : [
+						"[30.0, 30.0]"
+					],
+					"name" : [
+						"[\"Max\", \"Max\"]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [
+			{
+				"stage" : "FETCH",
+				"filter" : {
+					"age" : {
+						"$eq" : 30
+					}
+				},
+				"inputStage" : {
+					"stage" : "IXSCAN",
+					"keyPattern" : {
+						"name" : 1
+					},
+					"indexName" : "name_1",
+					"isMultiKey" : false,
+					"multiKeyPaths" : {
+						"name" : [ ]
+					},
+					"isUnique" : false,
+					"isSparse" : false,
+					"isPartial" : false,
+					"indexVersion" : 2,
+					"direction" : "forward",
+					"indexBounds" : {
+						"name" : [
+							"[\"Max\", \"Max\"]"
+						]
+					}
+				}
+			}
+		]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 0,
+		"executionTimeMillis" : 0,
+		"totalKeysExamined" : 0,
+		"totalDocsExamined" : 0,
+		"executionStages" : {
+			"stage" : "FETCH",
+			"nReturned" : 0,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 2,
+			"advanced" : 0,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"docsExamined" : 0,
+			"alreadyHasObj" : 0,
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 0,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 1,
+				"advanced" : 0,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 0,
+				"restoreState" : 0,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"keyPattern" : {
+					"age" : 1,
+					"name" : 1
+				},
+				"indexName" : "age_1_name_1",
+				"isMultiKey" : false,
+				"multiKeyPaths" : {
+					"age" : [ ],
+					"name" : [ ]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"age" : [
+						"[30.0, 30.0]"
+					],
+					"name" : [
+						"[\"Max\", \"Max\"]"
+					]
+				},
+				"keysExamined" : 0,
+				"seeks" : 1,
+				"dupsTested" : 0,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0
+			}
+		},
+		"allPlansExecution" : [
+			{
+				"nReturned" : 0,
+				"executionTimeMillisEstimate" : 0,
+				"totalKeysExamined" : 0,
+				"totalDocsExamined" : 0,
+				"executionStages" : {
+					"stage" : "FETCH",
+					"nReturned" : 0,
+					"executionTimeMillisEstimate" : 0,
+					"works" : 1,
+					"advanced" : 0,
+					"needTime" : 0,
+					"needYield" : 0,
+					"saveState" : 0,
+					"restoreState" : 0,
+					"isEOF" : 1,
+					"invalidates" : 0,
+					"docsExamined" : 0,
+					"alreadyHasObj" : 0,
+					"inputStage" : {
+						"stage" : "IXSCAN",
+						"nReturned" : 0,
+						"executionTimeMillisEstimate" : 0,
+						"works" : 1,
+						"advanced" : 0,
+						"needTime" : 0,
+						"needYield" : 0,
+						"saveState" : 0,
+						"restoreState" : 0,
+						"isEOF" : 1,
+						"invalidates" : 0,
+						"keyPattern" : {
+							"age" : 1,
+							"name" : 1
+						},
+						"indexName" : "age_1_name_1",
+						"isMultiKey" : false,
+						"multiKeyPaths" : {
+							"age" : [ ],
+							"name" : [ ]
+						},
+						"isUnique" : false,
+						"isSparse" : false,
+						"isPartial" : false,
+						"indexVersion" : 2,
+						"direction" : "forward",
+						"indexBounds" : {
+							"age" : [
+								"[30.0, 30.0]"
+							],
+							"name" : [
+								"[\"Max\", \"Max\"]"
+							]
+						},
+						"keysExamined" : 0,
+						"seeks" : 1,
+						"dupsTested" : 0,
+						"dupsDropped" : 0,
+						"seenInvalidated" : 0
+					}
+				}
+			},
+			{
+				"nReturned" : 0,
+				"executionTimeMillisEstimate" : 0,
+				"totalKeysExamined" : 1,
+				"totalDocsExamined" : 1,
+				"executionStages" : {
+					"stage" : "FETCH",
+					"filter" : {
+						"age" : {
+							"$eq" : 30
+						}
+					},
+					"nReturned" : 0,
+					"executionTimeMillisEstimate" : 0,
+					"works" : 1,
+					"advanced" : 0,
+					"needTime" : 1,
+					"needYield" : 0,
+					"saveState" : 0,
+					"restoreState" : 0,
+					"isEOF" : 0,
+					"invalidates" : 0,
+					"docsExamined" : 1,
+					"alreadyHasObj" : 0,
+					"inputStage" : {
+						"stage" : "IXSCAN",
+						"nReturned" : 1,
+						"executionTimeMillisEstimate" : 0,
+						"works" : 1,
+						"advanced" : 1,
+						"needTime" : 0,
+						"needYield" : 0,
+						"saveState" : 0,
+						"restoreState" : 0,
+						"isEOF" : 0,
+						"invalidates" : 0,
+						"keyPattern" : {
+							"name" : 1
+						},
+						"indexName" : "name_1",
+						"isMultiKey" : false,
+						"multiKeyPaths" : {
+							"name" : [ ]
+						},
+						"isUnique" : false,
+						"isSparse" : false,
+						"isPartial" : false,
+						"indexVersion" : 2,
+						"direction" : "forward",
+						"indexBounds" : {
+							"name" : [
+								"[\"Max\", \"Max\"]"
+							]
+						},
+						"keysExamined" : 1,
+						"seeks" : 1,
+						"dupsTested" : 0,
+						"dupsDropped" : 0,
+						"seenInvalidated" : 0
+					}
+				}
+			}
+		]
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MacBook-Pro.local",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+## <a name="15">15. Using multi key indexes</a>
+
+drop clear old collection
+
+```
+> db.contacts.drop()
+false
+>
+```
+
+```
+> db.contacts.insertOne({name: "Max", hobbies: ["Cooking", "Sports"], addresses: [{street: "Main Street"}, {street: "Secound Street"}]})
+{
+	"acknowledged" : true,
+	"insertedId" : ObjectId("5e1c0fe20265664cfe30358b")
+}
+>
+```
+
+### test create Index a field that sore `Array`
+
+```
+> db.contacts.createIndex({hobbies: 1})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+>
+```
+
+> Note: what mongodb does is it pulls out all the values in your index key, so in hobbies in case here, so it pulls out all the values in the array that stored in there. This of course means that multikey indexes for a lot of documents are bigger than single field indexes because if every document has an array with let's say four values on average and you have a thousand documents and that array field is what you index, you would store four thousand elements because 4 \* 1000 = 4000
+
+> Multikey indexes are possible but typically are also bigger, doesn't mean you shouldn't use them. If you typically query for an array and the value in an array well then it makes sense to turn this array into a multikey index, that is perfectly fine.
+
+```Javascript
+> db.contacts.explain("executionStats").find({hobbies: "Sports"})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "test.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"hobbies" : {
+				"$eq" : "Sports"
+			}
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"hobbies" : 1
+				},
+				"indexName" : "hobbies_1",
+				"isMultiKey" : true,
+				"multiKeyPaths" : {
+					"hobbies" : [
+						"hobbies"
+					]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"hobbies" : [
+						"[\"Sports\", \"Sports\"]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 1,
+		"executionTimeMillis" : 0,
+		"totalKeysExamined" : 1,
+		"totalDocsExamined" : 1,
+		"executionStages" : {
+			"stage" : "FETCH",
+			"nReturned" : 1,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 2,
+			"advanced" : 1,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"docsExamined" : 1,
+			"alreadyHasObj" : 0,
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 1,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 2,
+				"advanced" : 1,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 0,
+				"restoreState" : 0,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"keyPattern" : {
+					"hobbies" : 1
+				},
+				"indexName" : "hobbies_1",
+				"isMultiKey" : true,
+				"multiKeyPaths" : {
+					"hobbies" : [
+						"hobbies"
+					]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"hobbies" : [
+						"[\"Sports\", \"Sports\"]"
+					]
+				},
+				"keysExamined" : 1,
+				"seeks" : 1,
+				"dupsTested" : 1,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0
+			}
+		}
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MacBook-Pro.local",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+### test create Index a field that sore `Array Object`
+
+```
+> db.contacts.createIndex({addresses: 1})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 2,
+	"numIndexesAfter" : 3,
+	"ok" : 1
+}
+>
+```
+
+> COLLSCAN
+
+```Javascript
+> db.contacts.explain("executionStats").find({"addresses.street": "Main Street"})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "test.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"addresses.street" : {
+				"$eq" : "Main Street"
+			}
+		},
+		"winningPlan" : {
+			"stage" : "COLLSCAN",
+			"filter" : {
+				"addresses.street" : {
+					"$eq" : "Main Street"
+				}
+			},
+			"direction" : "forward"
+		},
+		"rejectedPlans" : [ ]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 1,
+		"executionTimeMillis" : 0,
+		"totalKeysExamined" : 0,
+		"totalDocsExamined" : 1,
+		"executionStages" : {
+			"stage" : "COLLSCAN",
+			"filter" : {
+				"addresses.street" : {
+					"$eq" : "Main Street"
+				}
+			},
+			"nReturned" : 1,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 3,
+			"advanced" : 1,
+			"needTime" : 1,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"direction" : "forward",
+			"docsExamined" : 1
+		}
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MacBook-Pro.local",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+> IXSCAN
+
+```Javascript
+> db.contacts.explain("executionStats").find({addresses: {street: "Main Street"}})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "test.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"addresses" : {
+				"$eq" : {
+					"street" : "Main Street"
+				}
+			}
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"addresses" : 1
+				},
+				"indexName" : "addresses_1",
+				"isMultiKey" : true,
+				"multiKeyPaths" : {
+					"addresses" : [
+						"addresses"
+					]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"addresses" : [
+						"[{ street: \"Main Street\" }, { street: \"Main Street\" }]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 1,
+		"executionTimeMillis" : 0,
+		"totalKeysExamined" : 1,
+		"totalDocsExamined" : 1,
+		"executionStages" : {
+			"stage" : "FETCH",
+			"nReturned" : 1,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 2,
+			"advanced" : 1,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"docsExamined" : 1,
+			"alreadyHasObj" : 0,
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 1,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 2,
+				"advanced" : 1,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 0,
+				"restoreState" : 0,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"keyPattern" : {
+					"addresses" : 1
+				},
+				"indexName" : "addresses_1",
+				"isMultiKey" : true,
+				"multiKeyPaths" : {
+					"addresses" : [
+						"addresses"
+					]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"addresses" : [
+						"[{ street: \"Main Street\" }, { street: \"Main Street\" }]"
+					]
+				},
+				"keysExamined" : 1,
+				"seeks" : 1,
+				"dupsTested" : 1,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0
+			}
+		}
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MacBook-Pro.local",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+> Can create an index on address.street
+
+```
+> db.contacts.createIndex({"addresses.street": 1})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 3,
+	"numIndexesAfter" : 4,
+	"ok" : 1
+}
+>
+```
+
+> Now query change from COLLSCAN to IXSCAN
+
+```Javascript
+> db.contacts.explain("executionStats").find({"addresses.street": "Main Street"})
+{
+	"queryPlanner" : {
+		"plannerVersion" : 1,
+		"namespace" : "test.contacts",
+		"indexFilterSet" : false,
+		"parsedQuery" : {
+			"addresses.street" : {
+				"$eq" : "Main Street"
+			}
+		},
+		"winningPlan" : {
+			"stage" : "FETCH",
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"keyPattern" : {
+					"addresses.street" : 1
+				},
+				"indexName" : "addresses.street_1",
+				"isMultiKey" : true,
+				"multiKeyPaths" : {
+					"addresses.street" : [
+						"addresses"
+					]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"addresses.street" : [
+						"[\"Main Street\", \"Main Street\"]"
+					]
+				}
+			}
+		},
+		"rejectedPlans" : [ ]
+	},
+	"executionStats" : {
+		"executionSuccess" : true,
+		"nReturned" : 1,
+		"executionTimeMillis" : 0,
+		"totalKeysExamined" : 1,
+		"totalDocsExamined" : 1,
+		"executionStages" : {
+			"stage" : "FETCH",
+			"nReturned" : 1,
+			"executionTimeMillisEstimate" : 0,
+			"works" : 2,
+			"advanced" : 1,
+			"needTime" : 0,
+			"needYield" : 0,
+			"saveState" : 0,
+			"restoreState" : 0,
+			"isEOF" : 1,
+			"invalidates" : 0,
+			"docsExamined" : 1,
+			"alreadyHasObj" : 0,
+			"inputStage" : {
+				"stage" : "IXSCAN",
+				"nReturned" : 1,
+				"executionTimeMillisEstimate" : 0,
+				"works" : 2,
+				"advanced" : 1,
+				"needTime" : 0,
+				"needYield" : 0,
+				"saveState" : 0,
+				"restoreState" : 0,
+				"isEOF" : 1,
+				"invalidates" : 0,
+				"keyPattern" : {
+					"addresses.street" : 1
+				},
+				"indexName" : "addresses.street_1",
+				"isMultiKey" : true,
+				"multiKeyPaths" : {
+					"addresses.street" : [
+						"addresses"
+					]
+				},
+				"isUnique" : false,
+				"isSparse" : false,
+				"isPartial" : false,
+				"indexVersion" : 2,
+				"direction" : "forward",
+				"indexBounds" : {
+					"addresses.street" : [
+						"[\"Main Street\", \"Main Street\"]"
+					]
+				},
+				"keysExamined" : 1,
+				"seeks" : 1,
+				"dupsTested" : 1,
+				"dupsDropped" : 0,
+				"seenInvalidated" : 0
+			}
+		}
+	},
+	"serverInfo" : {
+		"host" : "wudtichais-MacBook-Pro.local",
+		"port" : 27017,
+		"version" : "4.0.3",
+		"gitVersion" : "7ea530946fa7880364d88c8d8b6026bbc9ffa48c"
+	},
+	"ok" : 1
+}
+>
+```
+
+### compound indexes not with multiple arrays
+
+The reason for that, mongodb would have to store the cartesian product of the values of both indexes, of both array, so it would have to pull out all the address and for every address, it would have to store all the addresses and for every address, it would have to store all the hobbies. So if you have 2 addresses and 5 hobbies, your already have to store 10 values and that of course becomes even worse the more values you have in
+addresses, so that is why this is not possible.
+
+```
+> db.contacts.createIndex({addresses: 1, hobbies: 1})
+{
+	"ok" : 0,
+	"errmsg" : "cannot index parallel arrays [hobbies] [addresses]",
+	"code" : 171,
+	"codeName" : "CannotIndexParallelArrays"
 }
 >
 ```
