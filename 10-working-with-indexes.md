@@ -12,7 +12,7 @@
 - [x] [10. Partial Filters](#10)
 - [x] [11. What difference between Partial index and Compound index](#11)
 - [x] [12. Combination of unique and partial filter expression](#12)
-- [ ] [13. Time-To-Live (TTL) index](#13)
+- [x] [13. Time-To-Live (TTL) index](#13)
 
 ---
 
@@ -1345,6 +1345,57 @@ DBCollection.prototype.insertOne@src/mongo/shell/crud_api.js:252:9
 	"numIndexesBefore" : 1,
 	"numIndexesAfter" : 2,
 	"ok" : 1
+}
+>
+```
+
+## <a name="13">13. Time To Live (TTL) Index</a>
+
+create test-01 data
+
+```
+> db.sessions.insertOne({data: 'romantic', createdAt: new Date()})
+{
+	"acknowledged" : true,
+	"insertedId" : ObjectId("5e1bd55e0265664cfe303584")
+}
+```
+
+get test data
+
+```
+> db.sessions.find().pretty()
+{
+	"_id" : ObjectId("5e1bd55e0265664cfe303584"),
+	"data" : "romantic",
+	"createdAt" : ISODate("2020-01-13T02:26:38.834Z")
+}
+```
+
+create Index and use Time to live
+
+```
+// delete data after 10 seconds
+> db.sessions.createIndex({createdAt: 1}, {expireAfterSeconds: 10})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+```
+
+> Note: data test-01 after 10 seconds will note delete, because there was there before the index was added and the index does not delete elements in hindsight
+
+> In this case I'm test test-01 does deleted too. because adding a new element basically triggered mongodb to now reevaluate the entire collection,
+
+insert new test-02 element and then wait 10 seconds data will be delete.
+
+```
+> db.sessions.insertOne({data: 'romantic-02', createdAt: new Date()})
+{
+	"acknowledged" : true,
+	"insertedId" : ObjectId("5e1bd75c0265664cfe303585")
 }
 >
 ```
