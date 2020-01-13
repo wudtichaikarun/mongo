@@ -15,6 +15,7 @@
 - [x] [13. Time-To-Live (TTL) index](#13)
 - [x] [14. Query diagnosis & query planning](#14)
 - [x] [15. Using multi-key indexes](#15)
+- [x] [16. Text indexes](#16)
 
 ---
 
@@ -2619,4 +2620,280 @@ addresses, so that is why this is not possible.
 	"codeName" : "CannotIndexParallelArrays"
 }
 >
+```
+
+## <a name="16">16. Text indexes</a>
+
+Example text, This product is a must-buy for all fans of modern fiction!
+
+> One other thing mongodb does it removes all the stop words and stems all word, so that you have an array of keywords essentially
+
+Understanding 'text' indexes
+![Query_Diagnosis_&_Query_Planing](./images/10-working-with-indexes/understanding_text_indexes.png)
+
+insert test data
+
+```
+> db.products.insertMany([{title: "A Book", description: "This is an awesome book about a young artist!"}, {title: "Red T-Shirt", description: "This T-Shirt is red and it's pretty awesome!"}])
+{
+	"acknowledged" : true,
+	"insertedIds" : [
+		ObjectId("5e1c47f80265664cfe30358c"),
+		ObjectId("5e1c47f80265664cfe30358d")
+	]
+}
+>
+```
+
+test find()
+
+```
+> db.products.find().pretty()
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358c"),
+	"title" : "A Book",
+	"description" : "This is an awesome book about a young artist!"
+}
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358d"),
+	"title" : "Red T-Shirt",
+	"description" : "This T-Shirt is red and it's pretty awesome!"
+}
+>
+```
+
+> Note: should have only one text index per collection because text indexes are pretty expensive
+
+### create text index
+
+```
+> db.products.createIndex({description: "text"})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+>
+```
+
+### search text index
+
+```
+> db.products.find({$text: {$search: "book"}}).pretty()
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358c"),
+	"title" : "A Book",
+	"description" : "This is an awesome book about a young artist!"
+}
+```
+
+### search text index specific phrase though, can search for phrases by wrapping that phrase in double quote.
+
+```
+> db.products.find({$text: {$search: "\"awesome book\""}}).pretty()
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358c"),
+	"title" : "A Book",
+	"description" : "This is an awesome book about a young artist!"
+}
+```
+
+### order result (score)
+
+```
+ db.products.find({$text: {$search: "awesome t-shirt"}}, {score: {$meta: "textScore"}}).pretty()
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358d"),
+	"title" : "Red T-Shirt",
+	"description" : "This T-Shirt is red and it's pretty awesome!",
+	"score" : 1.7999999999999998
+}
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358c"),
+	"title" : "A Book",
+	"description" : "This is an awesome book about a young artist!",
+	"score" : 0.625
+}
+```
+
+or
+
+```
+> db.products.find({$text: {$search: "awesome t-shirt"}}, {score: {$meta: "textScore"}}).sort({score: {$meta: "textScore"}}).pretty()
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358d"),
+	"title" : "Red T-Shirt",
+	"description" : "This T-Shirt is red and it's pretty awesome!",
+	"score" : 1.7999999999999998
+}
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358c"),
+	"title" : "A Book",
+	"description" : "This is an awesome book about a young artist!",
+	"score" : 0.625
+}
+```
+
+### combine text index
+
+getIndexes()
+
+```
+> db.products.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "test.products"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"_fts" : "text",
+			"_ftsx" : 1
+		},
+		"name" : "description_text",
+		"ns" : "test.products",
+		"weights" : {
+			"description" : 1
+		},
+		"default_language" : "english",
+		"language_override" : "language",
+		"textIndexVersion" : 3
+	}
+]
+>
+```
+
+try to create text index at field title
+
+```
+> db.products.createIndex({title: "text"})
+{
+	"ok" : 0,
+	"errmsg" : "Index: { v: 2, key: { _fts: \"text\", _ftsx: 1 }, name: \"title_text\", ns: \"test.products\", weights: { title: 1 }, default_language: \"english\", language_override: \"language\", textIndexVersion: 3 } already exists with different options: { v: 2, key: { _fts: \"text\", _ftsx: 1 }, name: \"description_text\", ns: \"test.products\", weights: { description: 1 }, default_language: \"english\", language_override: \"language\", textIndexVersion: 3 }",
+	"code" : 85,
+	"codeName" : "IndexOptionsConflict"
+}
+```
+
+drop description by name `description_text`
+
+```
+> db.products.dropIndex("description_text")
+{ "nIndexesWas" : 2, "ok" : 1 }
+```
+
+getIndexes()
+
+```
+> db.products.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "test.products"
+	}
+]
+```
+
+create compound text indexes
+
+```
+> db.products.createIndex({title: "text", description: "text"})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+```
+
+getIndexes()
+
+```
+> db.products.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "test.products"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"_fts" : "text",
+			"_ftsx" : 1
+		},
+		"name" : "title_text_description_text",
+		"ns" : "test.products",
+		"weights" : {
+			"description" : 1,
+			"title" : 1
+		},
+		"default_language" : "english",
+		"language_override" : "language",
+		"textIndexVersion" : 3
+	}
+]
+```
+
+add new data-test for test field title
+
+```
+> db.products.insertOne({title: "A Ship", description: "Floats perfectly"})
+{
+	"acknowledged" : true,
+	"insertedId" : ObjectId("5e1c980f0265664cfe30358e")
+}
+```
+
+search text index field title
+
+```
+> db.products.find({$text: {$search: "ship"} }).pretty()
+{
+	"_id" : ObjectId("5e1c980f0265664cfe30358e"),
+	"title" : "A Ship",
+	"description" : "Floats perfectly"
+}
+```
+
+### using text index to exclude words
+
+include
+
+```
+> db.products.find({$text: {$search: "awesome"} }).pretty()
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358c"),
+	"title" : "A Book",
+	"description" : "This is an awesome book about a young artist!"
+}
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358d"),
+	"title" : "Red T-Shirt",
+	"description" : "This T-Shirt is red and it's pretty awesome!"
+}
+```
+
+exclude `-(word)` -t-shirt for example
+
+```
+> db.products.find({$text: {$search: "awesome -t-shirt"} }).pretty()
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358c"),
+	"title" : "A Book",
+	"description" : "This is an awesome book about a young artist!"
+}
 ```
