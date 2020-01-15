@@ -1113,6 +1113,12 @@ Find duplicate value `email: "abigail.clark@example.com"`
 { "nIndexesWas" : 3, "ok" : 1 }
 ```
 
+or just use index name
+
+```
+> db.contacts.dropIndex("dob.age_1_gender_1")
+```
+
 3. get Indexes
 
 ```
