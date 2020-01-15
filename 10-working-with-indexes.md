@@ -17,6 +17,12 @@
 - [x] [15. Using multi-key indexes](#15)
 - [x] [16. Text indexes](#16)
 
+Link
+
+- [partial indexes](https://docs.mongodb.com/manual/core/index-partial/)
+- [Text Search Languages](https://docs.mongodb.com/manual/reference/text-search-languages/#text-search-languages)
+- [Specify a Language for Text Index](https://docs.mongodb.com/manual/tutorial/specify-language-for-text-index/#create-a-text-index-for-a-collection-in-multiple-languages)
+
 ---
 
 ## 1. Why indexes
@@ -2896,4 +2902,199 @@ exclude `-(word)` -t-shirt for example
 	"title" : "A Book",
 	"description" : "This is an awesome book about a young artist!"
 }
+```
+
+### Setting the default language & the weights
+
+1. get products indexes
+2. clean old products index
+3. create new index with setting language
+4. find by text index and show score
+
+1.get products indexes
+
+```
+> db.products.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "test.products"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"_fts" : "text",
+			"_ftsx" : 1
+		},
+		"name" : "title_text_description_text",
+		"ns" : "test.products",
+		"weights" : {
+			"description" : 1,
+			"title" : 1
+		},
+		"default_language" : "english",
+		"language_override" : "language",
+		"textIndexVersion" : 3
+	}
+]
+```
+
+2.clean old products indexes
+
+```
+> db.products.dropIndex("title_text_description_text")
+{ "nIndexesWas" : 2, "ok" : 1 }
+```
+
+3. create new index with setting language
+
+   > weights title: 1, description: 10 description would be worth 10 times as much as title
+
+```
+> db.products.createIndex({title: "text", description: "text"}, {default_language: "english", weights: {title: 1, description: 10}})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+```
+
+get indexes
+
+```
+> db.products.getIndexes()
+[
+	{
+		"v" : 2,
+		"key" : {
+			"_id" : 1
+		},
+		"name" : "_id_",
+		"ns" : "test.products"
+	},
+	{
+		"v" : 2,
+		"key" : {
+			"_fts" : "text",
+			"_ftsx" : 1
+		},
+		"name" : "title_text_description_text",
+		"ns" : "test.products",
+		"default_language" : "english",
+		"weights" : {
+			"description" : 10,
+			"title" : 1
+		},
+		"language_override" : "language",
+		"textIndexVersion" : 3
+	}
+]
+>
+```
+
+4. find by text index and show score
+
+```
+// db.products.find({$text: {$search: "", $language: "thailand"}}) //language default english
+// db.products.find({$text: {$search: "", $caseSensitive: true}}) // caseSensitive default false
+
+> db.products.find({$text: {$search: "red"}}, {score: {$meta: "textScore"}}).pretty()
+{
+	"_id" : ObjectId("5e1c47f80265664cfe30358d"),
+	"title" : "Red T-Shirt",
+	"description" : "This T-Shirt is red and it's pretty awesome!",
+	"score" : 6.666666666666667
+}
+>
+```
+
+### Building index
+
+![Query_Diagnosis_&_Query_Planing](./images/10-working-with-indexes/Building_index.png)
+
+1. insert data to mongodb local (credit)
+2. use the data from 1. (use credit)
+3. check count = 1000000 ?
+4. open terminal-1, terminal-2
+
+---
+
+1. insert data to mongodb local (credit)
+
+```
+> mongo credit-rating.js
+MongoDB shell version v4.0.3
+connecting to: mongodb://127.0.0.1:27017
+Implicit session: session { "id" : UUID("47b66259-c934-411f-84bc-a7b70070834c") }
+MongoDB server version: 4.0.3
+
+```
+
+2. use the data from 1.
+
+```
+> mongo
+2020-01-14T10:58:54.134+0700 E QUERY    [js] ReferenceError: mongo is not defined :
+@(shell):1:1
+> show dbs
+admin        0.000GB
+config       0.000GB
+contactData  0.003GB
+credit       0.040GB
+local        0.000GB
+test         0.000GB
+>
+> show dbs
+admin        0.000GB
+config       0.000GB
+contactData  0.003GB
+credit       0.040GB
+local        0.000GB
+test         0.000GB
+> use credit
+switched to db credit
+```
+
+3. check count = 100000 ?
+
+```
+> db.ratings.count()
+1000000
+```
+
+4. open terminal-1, terminal-2
+
+> prepare command findOne at terminal-1 at terminal-2 create index hit enter at terminal-1 and terminal-2, query at terminal-1 will finish after terminal-1
+
+terminal-1
+
+```
+> db.ratings.findOne()
+{
+	"_id" : ObjectId("5e1d3aea1fe2a1f8db5f9ab3"),
+	"person_id" : 1,
+	"score" : 26.98041976958896,
+	"age" : 32
+}
+>
+```
+
+terminal-2
+
+```
+// db.ratings.createIndex({age: 1}, {background: false}) // default
+
+> db.ratings.createIndex({age:1})
+{
+	"createdCollectionAutomatically" : false,
+	"numIndexesBefore" : 1,
+	"numIndexesAfter" : 2,
+	"ok" : 1
+}
+>
 ```
